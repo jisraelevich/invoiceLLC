@@ -167,8 +167,8 @@ async def ejecutar_facturador(modo_pausas=2):
                     # Modo RÁPIDO: sin pausa
                     pass
                 elif modo_pausas == 2:
-                    # Modo ALEATORIO: 30-60 segundos
-                    pausa = random.randint(30, 60)
+                    # Modo ALEATORIO: 4-15 segundos
+                    pausa = random.randint(4, 15)
                     logger.info(f"⏳ Pausa: {pausa} segundos")
                     await asyncio.sleep(pausa)
                 elif modo_pausas == 3:

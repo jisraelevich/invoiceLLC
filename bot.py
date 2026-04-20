@@ -35,41 +35,31 @@ class BotAFIP:
         self.context: Optional[BrowserContext] = None
         self.page: Optional[Page] = None
     
-    async def pausa_aleatoria(self, pausa_corta: float = 1.0, pausa_larga: float = 3.0):
+    async def pausa_aleatoria(self, pausa_base: float = 1.0):
         """
-        Realiza una pausa aleatorizada según modo_pausas.
+        Realiza una pausa con microsegundos ÚNICOS - nunca la misma pausa dos veces.
+        Valores como: 1.2347s, 1.9876s, 2.5432s, 2.1234s, etc.
+        Efecto: muy humano, imposible detectar como bot.
         
         Args:
-            pausa_corta: Duración esperada de pausa corta (se usa como base)
-            pausa_larga: Duración esperada de pausa larga (se usa como base)
+            pausa_base: Se usa solo como referencia, siempre entre 1-3 segundos máximo
         """
         if self.modo_pausas == 1:
-            # Modo RÁPIDO: sin pausa
-            return
+            # Modo RÁPIDO: pausas mínimas con microsegundos (0.1-0.5 seg)
+            pausa = random.uniform(0.1, 0.5)
         elif self.modo_pausas == 2:
-            # Modo ALEATORIO: con rango aleatorio
-            if pausa_corta <= 1:
-                # Pausas de ~1 segundo: 0.5-1.5
-                pausa = random.uniform(0.5, 1.5)
-            elif pausa_corta <= 2:
-                # Pausas de ~2 segundos: 1.5-3.5
-                pausa = random.uniform(1.5, 3.5)
-            else:
-                # Pausas de ~5 segundos: 4-7
-                pausa = random.uniform(4, 7)
-            await asyncio.sleep(pausa)
+            # Modo ALEATORIO: pausas 1-3 segundos CON MICROSEGUNDOS
+            # Ejemplo: 1.234567, 1.876543, 2.456789, 2.123456
+            pausa = random.uniform(1.0, 3.0)
         elif self.modo_pausas == 3:
-            # Modo HUMANIZADO: rangos más amplios
-            if pausa_corta <= 1:
-                # Pausas de ~1 segundo: 0.8-2.0
-                pausa = random.uniform(0.8, 2.0)
-            elif pausa_corta <= 2:
-                # Pausas de ~2 segundos: 2-5
-                pausa = random.uniform(2, 5)
-            else:
-                # Pausas de ~5 segundos: 5-10
-                pausa = random.uniform(5, 10)
-            await asyncio.sleep(pausa)
+            # Modo HUMANIZADO: pausas 1.5-3 segundos CON MICROSEGUNDOS
+            # Ejemplo: 1.654321, 2.345678, 2.987654, 1.567890
+            pausa = random.uniform(1.5, 3.0)
+        else:
+            pausa = 1.0
+        
+        # NO redondear - mantener microsegundos para máxima variabilidad
+        await asyncio.sleep(pausa)
     
     async def iniciar_navegador(self):
         """Inicia el navegador Playwright."""
@@ -515,7 +505,7 @@ class BotAFIP:
             except Exception as e:
                 logger.warning(f"  ⚠ Error cambiando fecha: {e}")
             
-            await asyncio.sleep(1)
+            await self.pausa_aleatoria()
             
             # PASO 4.2: Seleccionar "Conceptos a incluir" = "Servicios"
             logger.info(f"  [4.2] Seleccionando 'Servicios' en Conceptos a incluir...")
@@ -776,7 +766,8 @@ class BotAFIP:
             except Exception as e:
                 logger.warning(f"  ⚠ Error en Código: {e}")
             
-            await asyncio.sleep(0.5)
+            # Pausa después de Código: 1-2.5s
+            await asyncio.sleep(random.uniform(1, 2.5))
             
             # PASO 3.2: Rellenar Producto/Servicio (detalleDescripcion - TEXTAREA)
             logger.info(f"  [3.2] Rellenando Producto/Servicio...")
@@ -798,7 +789,8 @@ class BotAFIP:
             except Exception as e:
                 logger.warning(f"  ⚠ Error en Producto: {e}")
             
-            await asyncio.sleep(0.5)
+            # Pausa después de Producto: 1-2.5s
+            await asyncio.sleep(random.uniform(1, 2.5))
             
             # PASO 3.3: Rellenar Cantidad (intentar varios nombres)
             logger.info(f"  [3.3] Rellenando Cantidad...")
@@ -817,7 +809,8 @@ class BotAFIP:
             except Exception as e:
                 logger.warning(f"  ⚠ Error en Cantidad: {e}")
             
-            await asyncio.sleep(0.5)
+            # Pausa después de Cantidad: 1-2.5s
+            await asyncio.sleep(random.uniform(1, 2.5))
             
             # PASO 3.4: Rellenar Precio Unitario (detallePrecio / id=detalle_precio1)
             logger.info(f"  [3.4] Rellenando Precio Unitario...")
@@ -900,7 +893,7 @@ class BotAFIP:
                                 }""")
                                 
                                 if result_modal['success']:
-                                    await asyncio.sleep(5)  # Esperar generación del CAE
+                                    await asyncio.sleep(random.uniform(2, 4))  # Esperar confirmación y generación (2-4s aleatorio)
                                     logger.info("  ✓ Factura generada correctamente")
                                     await self.tomar_screenshot("paso4_factura_generada")
                                 else:
