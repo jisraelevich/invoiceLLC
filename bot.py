@@ -9,6 +9,7 @@ Bot AFIP - Flujo correcto según el usuario
 """
 
 import asyncio
+import random
 from pathlib import Path
 from datetime import datetime
 from typing import Tuple, Optional
@@ -23,15 +24,52 @@ logger = LoggerFactory.get_logger(__name__)
 class BotAFIP:
     """Bot para generar facturas en AFIP FE/RCEL - Flujo correcto del usuario"""
     
-    def __init__(self, cuit: str, password: str, empresa_nombre: str = "", headless: bool = False, punto_venta: int = 1):
+    def __init__(self, cuit: str, password: str, empresa_nombre: str = "", headless: bool = False, punto_venta: int = 1, modo_pausas: int = 2):
         self.cuit = cuit
         self.password = password
         self.empresa_nombre = empresa_nombre
         self.headless = headless
         self.punto_venta = punto_venta
+        self.modo_pausas = modo_pausas  # 1=rápido, 2=aleatorio, 3=humanizado
         self.browser: Optional[Browser] = None
         self.context: Optional[BrowserContext] = None
         self.page: Optional[Page] = None
+    
+    async def pausa_aleatoria(self, pausa_corta: float = 1.0, pausa_larga: float = 3.0):
+        """
+        Realiza una pausa aleatorizada según modo_pausas.
+        
+        Args:
+            pausa_corta: Duración esperada de pausa corta (se usa como base)
+            pausa_larga: Duración esperada de pausa larga (se usa como base)
+        """
+        if self.modo_pausas == 1:
+            # Modo RÁPIDO: sin pausa
+            return
+        elif self.modo_pausas == 2:
+            # Modo ALEATORIO: con rango aleatorio
+            if pausa_corta <= 1:
+                # Pausas de ~1 segundo: 0.5-1.5
+                pausa = random.uniform(0.5, 1.5)
+            elif pausa_corta <= 2:
+                # Pausas de ~2 segundos: 1.5-3.5
+                pausa = random.uniform(1.5, 3.5)
+            else:
+                # Pausas de ~5 segundos: 4-7
+                pausa = random.uniform(4, 7)
+            await asyncio.sleep(pausa)
+        elif self.modo_pausas == 3:
+            # Modo HUMANIZADO: rangos más amplios
+            if pausa_corta <= 1:
+                # Pausas de ~1 segundo: 0.8-2.0
+                pausa = random.uniform(0.8, 2.0)
+            elif pausa_corta <= 2:
+                # Pausas de ~2 segundos: 2-5
+                pausa = random.uniform(2, 5)
+            else:
+                # Pausas de ~5 segundos: 5-10
+                pausa = random.uniform(5, 10)
+            await asyncio.sleep(pausa)
     
     async def iniciar_navegador(self):
         """Inicia el navegador Playwright."""
@@ -931,6 +969,34 @@ class BotAFIP:
             
             logger.info("\n✓ FACTURA GENERADA CON ÉXITO")
             await self.tomar_screenshot("factura_exitosa")
+            
+            # IMPORTANTE: Volver al Menú Principal para la próxima factura
+            logger.info("\n[VOLVER] Clickeando 'Menú Principal' para retornar...")
+            try:
+                resultado_menu = await self.page.evaluate("""() => {
+                    let buttons = Array.from(document.querySelectorAll('input[type="button"], button'));
+                    let menu_btn = buttons.find(b => {
+                        let text = b.textContent || b.value || '';
+                        return text.includes('Menú Principal') || text.includes('menu_ppal');
+                    });
+                    
+                    if (menu_btn) {
+                        menu_btn.click();
+                        return { success: true };
+                    }
+                    return { success: false };
+                }""")
+                
+                if resultado_menu['success']:
+                    await asyncio.sleep(3)  # Esperar carga del menú
+                    logger.info("  ✓ Volvió al Menú Principal")
+                    await self.tomar_screenshot("menu_vuelto")
+                else:
+                    logger.warning("  ⚠ No se encontró botón 'Menú Principal' (pero factura se generó)")
+                    
+            except Exception as e:
+                logger.warning(f"  ⚠ Error volviendo al menú: {e}")
+            
             return True, cae, "00001"
             
         except Exception as e:
@@ -945,7 +1011,7 @@ class BotAFIP:
 
 async def ejecutar_bot_factura(cuit: str, password: str, punto_venta: int, fecha: str, codigo: str,
                                descripcion: str, monto: str, cuit_cliente: str, nombre_cliente: str,
-                               empresa_nombre: str = "", headless: bool = False) -> Tuple[bool, str, str]:
+                               empresa_nombre: str = "", headless: bool = False, modo_pausas: int = 2) -> Tuple[bool, str, str]:
     """
     Interfaz compatible con main.py para ejecutar el flujo completo de facturación.
     
@@ -961,11 +1027,12 @@ async def ejecutar_bot_factura(cuit: str, password: str, punto_venta: int, fecha
         nombre_cliente: Nombre del cliente
         empresa_nombre: Nombre de la empresa a representar
         headless: Ejecutar en modo headless
+        modo_pausas: Modo de pausas (1=rápido, 2=aleatorio, 3=humanizado)
         
     Returns:
         Tuple(éxito, CAE, nro_comprobante)
     """
-    bot = BotAFIP(cuit, password, empresa_nombre, headless, punto_venta)
+    bot = BotAFIP(cuit, password, empresa_nombre, headless, punto_venta, modo_pausas)
     
     try:
         # Iniciar navegador
