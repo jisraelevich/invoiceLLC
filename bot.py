@@ -1023,13 +1023,13 @@ class BotAFIP:
                     
                     // Buscar en el HTML completo con regex
                     let html = document.documentElement.outerHTML;
-                    let cae_match = html.match(/cae["\']?\s*[:\s>]*(\d{13})/i);
+                    let cae_match = html.match(/cae["\''\']?\\s*[:\\s>]*(\\d{13})/i);
                     if (cae_match) {
                         return cae_match[1];
                     }
                     
                     // Buscar cualquier patrón de 13 dígitos que parezca CAE
-                    let all_numbers = html.match(/(\d{13})/g);
+                    let all_numbers = html.match(/(\\d{13})/g);
                     if (all_numbers && all_numbers.length > 0) {
                         return all_numbers[0]; // Retornar el primero como aproximación
                     }

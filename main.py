@@ -238,7 +238,7 @@ def main():
     
     # Requerir --ahora para ejecutar
     if not args.ahora:
-        logger.error("❌ Uso: python main.py --ahora [--modo 1|2|3]")
+        logger.error("[ERROR] Uso: python main.py --ahora [--modo 1|2|3]")
         logger.error("Ejemplo: python main.py --ahora --modo 2")
         sys.exit(1)
     
