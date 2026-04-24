@@ -66,17 +66,6 @@ class LoggerFactory:
         return logger
 
 
-def crear_excel_si_no_existe():
-    """Crea un Excel de ejemplo si no existe."""
-    from excel_handler import crear_excel_ejemplo
-    from config import EXCEL_FILE
-    
-    if not EXCEL_FILE.exists():
-        logger = LoggerFactory.get_logger(__name__)
-        logger.warning(f"Archivo {EXCEL_FILE} no encontrado. Creando ejemplo...")
-        crear_excel_ejemplo(str(EXCEL_FILE))
-
-
 def validar_ambiente():
     """
     Valida que el ambiente esté correctamente configurado.

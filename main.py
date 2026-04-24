@@ -13,16 +13,13 @@ import argparse
 import sys
 import random
 from pathlib import Path
-from datetime import datetime
 
-from excel_handler import ExcelHandler, crear_excel_ejemplo
 from csv_handler import CSVHandler
 from bot import BotAFIP
-from scheduler import Scheduler
-from utils import LoggerFactory, validar_ambiente, crear_excel_si_no_existe
+from utils import LoggerFactory, validar_ambiente
 from config import (
     AFIP_CUIT, AFIP_PASSWORD, AFIP_PUNTO_VENTA, HEADLESS, CSV_FILE, 
-    SCHEDULER_HORA, SCHEDULER_DIA, AFIP_EMPRESA_NOMBRE
+    AFIP_EMPRESA_NOMBRE
 )
 
 # Variables globales de logger
@@ -218,17 +215,6 @@ async def ejecutar_facturador(modo_pausas=2):
         return False
 
 
-def tarea_facturador_programada():
-    """
-    Wrapper para ejecutar el facturador como tarea programada.
-    Usa modo 2 (aleatorio) por defecto.
-    """
-    try:
-        asyncio.run(ejecutar_facturador(modo_pausas=2))
-    except Exception as e:
-        logger.error(f"Error en tarea programada: {e}", exc_info=True)
-
-
 def main():
     """Función principal."""
     # Parser de argumentos
@@ -238,7 +224,7 @@ def main():
     parser.add_argument(
         "--ahora",
         action="store_true",
-        help="Ejecutar inmediatamente (no esperar al viernes)"
+        help="Ejecutar inmediatamente"
     )
     parser.add_argument(
         "--modo",
@@ -247,48 +233,14 @@ def main():
         default=2,
         help="Modo de pausas: 1=Rápido, 2=Aleatorio (defecto), 3=Humanizado"
     )
-    parser.add_argument(
-        "--crear-ejemplo",
-        action="store_true",
-        help="Crear un archivo Excel de ejemplo"
-    )
-    parser.add_argument(
-        "--entorno",
-        action="store_true",
-        help="Mostrar variables de entorno configuradas"
-    )
-    parser.add_argument(
-        "--logs",
-        action="store_true",
-        help="Mostrar logs disponibles"
-    )
     
     args = parser.parse_args()
     
-    # Crear Excel de ejemplo si se solicita
-    if args.crear_ejemplo:
-        logger.info("Creando archivo Excel de ejemplo...")
-        if crear_excel_ejemplo(str(EXCEL_FILE)):
-            logger.info(f"✓ Excel de ejemplo creado: {EXCEL_FILE}")
-        return
-    
-    # Mostrar variables de entorno
-    if args.entorno:
-        logger.info("Variables de entorno:")
-        logger.info(f"  AFIP_CUIT: {AFIP_CUIT[:4]}...{AFIP_CUIT[-2:] if AFIP_CUIT else 'NO CONFIGURADO'}")
-        logger.info(f"  AFIP_PASSWORD: {'***OCULTO***' if AFIP_PASSWORD else 'NO CONFIGURADO'}")
-        logger.info(f"  AFIP_PUNTO_VENTA: {AFIP_PUNTO_VENTA}")
-        logger.info(f"  HEADLESS: {HEADLESS}")
-        return
-    
-    # Mostrar logs disponibles
-    if args.logs:
-        from utils import listar_logs, obtener_estadisticas_logs
-        logger.info("Estadísticas de logs:")
-        stats = obtener_estadisticas_logs()
-        for key, value in stats.items():
-            logger.info(f"  {key}: {value}")
-        return
+    # Requerir --ahora para ejecutar
+    if not args.ahora:
+        logger.error("❌ Uso: python main.py --ahora [--modo 1|2|3]")
+        logger.error("Ejemplo: python main.py --ahora --modo 2")
+        sys.exit(1)
     
     # Ejecutar inmediatamente
     if args.ahora:
@@ -299,22 +251,6 @@ def main():
             logger.info("\nEjecución interrumpida por usuario")
         except Exception as e:
             logger.error(f"Error inesperado: {e}", exc_info=True)
-    else:
-        # Modo automático: viernes a las 9:00 AM
-        logger.info("Modo: Ejecución automática (viernes a las 9:00 AM)")
-        logger.info("Para ejecutar inmediatamente, use: python main.py --ahora")
-        
-        scheduler = Scheduler(tarea_facturador_programada, hora=SCHEDULER_HORA, dia_semana=SCHEDULER_DIA)
-        scheduler.programar()
-        
-        logger.info(f"✓ Próxima ejecución: {scheduler.obtener_fecha_proxima_ejecucion()}")
-        logger.info("Presione Ctrl+C para detener")
-        
-        try:
-            scheduler.ejecutar_loop()
-        except KeyboardInterrupt:
-            logger.info("\nScheduler detenido por usuario")
-            scheduler.detener()
 
 
 if __name__ == "__main__":
