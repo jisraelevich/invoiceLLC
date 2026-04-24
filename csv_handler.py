@@ -40,7 +40,7 @@ class CSVHandler:
             
             self.datos = []
             
-            with open(self.archivo_csv, 'r', encoding='utf-8') as f:
+            with open(self.archivo_csv, 'r', encoding='utf-8-sig') as f:
                 reader = csv.DictReader(f)
                 
                 for idx, row in enumerate(reader, start=2):  # Empezar desde fila 2
@@ -51,19 +51,22 @@ class CSVHandler:
                         'codigo': row.get('CODIGO', '').strip(),
                         'descripcion': row.get('PRODUCTO SERVICO:', '').strip(),
                         'monto': row.get('PRECIO UNITARIO', '').strip(),
-                        'cuit_cliente': '99999999999',  # Consumidor Final por defecto
-                        'nombre_cliente': 'Consumidor Final',
-                        'estado': 'PENDIENTE',
-                        'cae': '',
-                        'nro_comprobante': ''
+                        'cuit_cliente': row.get('CUIT_CLIENTE', '99999999999').strip() or '99999999999',
+                        'nombre_cliente': row.get('NOMBRE_CLIENTE', 'Consumidor Final').strip() or 'Consumidor Final',
+                        'estado': row.get('ESTADO', 'PENDIENTE').strip() or 'PENDIENTE',
+                        'cae': row.get('CAE', '').strip(),
+                        'nro_comprobante': row.get('NRO_COMPROBANTE', '').strip()
                     }
                     
-                    # Validar datos mínimos
-                    if fila['fecha'] and fila['descripcion'] and fila['monto']:
+                    # Validar datos mínimos (solo PENDIENTE)
+                    if fila['fecha'] and fila['descripcion'] and fila['monto'] and fila['estado'].upper() == 'PENDIENTE':
                         self.datos.append(fila)
                         logger.info(f"Fila {idx} cargada: {fila['descripcion']}")
                     else:
-                        logger.warning(f"Fila {idx} ignorada por datos incompletos")
+                        if fila['estado'].upper() != 'PENDIENTE':
+                            logger.debug(f"Fila {idx} ignorada (estado={fila['estado']})")
+                        else:
+                            logger.warning(f"Fila {idx} ignorada por datos incompletos")
             
             logger.info(f"CSV cargado: {len(self.datos)} facturas válidas")
             return True
@@ -132,31 +135,39 @@ class CSVHandler:
             bool: True si se guardó exitosamente
         """
         try:
+            logger.info(f"📝 Intentando guardar {len(self.datos)} filas en {archivo_salida}...")
+            
             archivo_salida_path = Path(archivo_salida)
             
-            with open(archivo_salida_path, 'w', newline='', encoding='utf-8') as f:
+            with open(archivo_salida_path, 'w', newline='', encoding='utf-8-sig') as f:
                 fieldnames = ['FECHA', 'CODIGO', 'PRODUCTO SERVICO:', 'PRECIO UNITARIO', 
                               'CUIT_CLIENTE', 'NOMBRE_CLIENTE', 'ESTADO', 'CAE', 'NRO_COMPROBANTE']
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
                 
                 writer.writeheader()
                 
+                filas_escritas = 0
                 for fila in self.datos:
-                    writer.writerow({
-                        'FECHA': fila['fecha'],
-                        'CODIGO': fila['codigo'],
-                        'PRODUCTO SERVICO:': fila['descripcion'],
-                        'PRECIO UNITARIO': fila['monto'],
-                        'CUIT_CLIENTE': fila['cuit_cliente'],
-                        'NOMBRE_CLIENTE': fila['nombre_cliente'],
-                        'ESTADO': fila['estado'],
-                        'CAE': fila['cae'],
-                        'NRO_COMPROBANTE': fila['nro_comprobante']
-                    })
+                    try:
+                        writer.writerow({
+                            'FECHA': fila['fecha'],
+                            'CODIGO': fila['codigo'],
+                            'PRODUCTO SERVICO:': fila['descripcion'],
+                            'PRECIO UNITARIO': fila['monto'],
+                            'CUIT_CLIENTE': fila['cuit_cliente'],
+                            'NOMBRE_CLIENTE': fila['nombre_cliente'],
+                            'ESTADO': fila['estado'],
+                            'CAE': fila['cae'],
+                            'NRO_COMPROBANTE': fila['nro_comprobante']
+                        })
+                        filas_escritas += 1
+                    except Exception as e:
+                        logger.error(f"  ✗ Error escribiendo fila: {e}")
+                        continue
             
-            logger.info(f"CSV guardado: {archivo_salida_path}")
+            logger.info(f"✓ CSV guardado: {archivo_salida_path} ({filas_escritas} filas)")
             return True
             
         except Exception as e:
-            logger.error(f"Error al guardar CSV: {e}")
+            logger.error(f"✗ Error al guardar CSV: {e}", exc_info=True)
             return False

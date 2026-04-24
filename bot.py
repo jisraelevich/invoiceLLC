@@ -9,6 +9,7 @@ Bot AFIP - Flujo correcto según el usuario
 """
 
 import asyncio
+import random
 from pathlib import Path
 from datetime import datetime
 from typing import Tuple, Optional
@@ -23,15 +24,42 @@ logger = LoggerFactory.get_logger(__name__)
 class BotAFIP:
     """Bot para generar facturas en AFIP FE/RCEL - Flujo correcto del usuario"""
     
-    def __init__(self, cuit: str, password: str, empresa_nombre: str = "", headless: bool = False, punto_venta: int = 1):
+    def __init__(self, cuit: str, password: str, empresa_nombre: str = "", headless: bool = False, punto_venta: int = 1, modo_pausas: int = 2):
         self.cuit = cuit
         self.password = password
         self.empresa_nombre = empresa_nombre
         self.headless = headless
         self.punto_venta = punto_venta
+        self.modo_pausas = modo_pausas  # 1=rápido, 2=aleatorio, 3=humanizado
         self.browser: Optional[Browser] = None
         self.context: Optional[BrowserContext] = None
         self.page: Optional[Page] = None
+    
+    async def pausa_aleatoria(self, pausa_base: float = 1.0):
+        """
+        Realiza una pausa con microsegundos ÚNICOS - nunca la misma pausa dos veces.
+        Valores como: 1.2347s, 1.9876s, 2.5432s, 2.1234s, etc.
+        Efecto: muy humano, imposible detectar como bot.
+        
+        Args:
+            pausa_base: Se usa solo como referencia, siempre entre 1-3 segundos máximo
+        """
+        if self.modo_pausas == 1:
+            # Modo RÁPIDO: pausas mínimas con microsegundos (0.1-0.5 seg)
+            pausa = random.uniform(0.1, 0.5)
+        elif self.modo_pausas == 2:
+            # Modo ALEATORIO: pausas 1-3 segundos CON MICROSEGUNDOS
+            # Ejemplo: 1.234567, 1.876543, 2.456789, 2.123456
+            pausa = random.uniform(1.0, 3.0)
+        elif self.modo_pausas == 3:
+            # Modo HUMANIZADO: pausas 1.5-3 segundos CON MICROSEGUNDOS
+            # Ejemplo: 1.654321, 2.345678, 2.987654, 1.567890
+            pausa = random.uniform(1.5, 3.0)
+        else:
+            pausa = 1.0
+        
+        # NO redondear - mantener microsegundos para máxima variabilidad
+        await asyncio.sleep(pausa)
     
     async def iniciar_navegador(self):
         """Inicia el navegador Playwright."""
@@ -258,6 +286,15 @@ class BotAFIP:
                 # Esperar a que la página cambie
                 await asyncio.sleep(5)  # Esperar muy bien
                 logger.info(f"  📍 URL actual: {self.page.url}")
+                
+                # ⚠️ DETECTAR ERROR DE AFIP temprano
+                if "monotributo.afip.gob.ar/app/Ayuda/Error" in self.page.url:
+                    logger.error(f"❌ ERROR DE AFIP DETECTADO")
+                    logger.error(f"   Ha ocurrido un error en AFIP después de seleccionar empresa")
+                    logger.error(f"   Por favor, volvé a intentar en unos minutos.")
+                    await self.tomar_screenshot("error_afip_despues_empresa")
+                    return False
+                
                 await self.tomar_screenshot("empresa_despues_click")
                     
             except Exception as e:
@@ -273,6 +310,79 @@ class BotAFIP:
         except Exception as e:
             logger.error(f"✗ Error seleccionando empresa: {e}")
             await self.tomar_screenshot("empresa_exception")
+            return False
+    
+    async def retornar_al_menu(self) -> bool:
+        """
+        Retorna al menú principal de forma ROBUSTA.
+        Verifica que estamos en menu_ppal.jsp antes de retornar.
+        
+        Returns:
+            bool: True si estamos en menu_ppal.jsp correctamente
+        """
+        try:
+            logger.info("\n🔄 [RETORNO AL MENÚ] Intentando volver al menú principal...")
+            
+            # Método 1: Buscar botón "Menú Principal"
+            try:
+                resultado = await self.page.evaluate("""() => {
+                    let buttons = Array.from(document.querySelectorAll('button, input[type="button"], a'));
+                    let menu_btn = buttons.find(b => {
+                        let text = (b.textContent || b.value || b.innerText || '').toLowerCase();
+                        return text.includes('menú principal') || text.includes('menu principal') || 
+                               text.includes('volver') || text.includes('< volver');
+                    });
+                    
+                    if (menu_btn) {
+                        menu_btn.click();
+                        return { success: true, method: 'botón encontrado' };
+                    }
+                    return { success: false };
+                }""")
+                
+                if resultado['success']:
+                    logger.info(f"  ✓ Click en botón ({resultado.get('method', 'desconocido')})")
+                    
+                    # IMPORTANTE: Esperar a que cargue COMPLETAMENTE
+                    await self.page.wait_for_load_state("load", timeout=15000)
+                    await asyncio.sleep(2)  # Pausa adicional por animaciones/JavaScript
+                    
+                    current_url = self.page.url
+                    logger.info(f"  📍 URL actual: {current_url}")
+                    
+                    # Verificar que estamos en menu_ppal.jsp
+                    if "menu_ppal.jsp" in current_url:
+                        logger.info(f"  ✓ Confirmado: Estamos en menu_ppal.jsp")
+                        return True
+                    else:
+                        logger.warning(f"  ⚠ Esperábamos menu_ppal.jsp pero tenemos: {current_url}")
+                        # Intentar navegar directamente
+                        logger.info(f"  → Navegando directo a menu_ppal.jsp...")
+                        await self.page.goto("https://fe.afip.gob.ar/rcel/jsp/menu_ppal.jsp", 
+                                           wait_until="load", timeout=10000)
+                        await asyncio.sleep(2)
+                        logger.info(f"  ✓ OK en menu_ppal.jsp")
+                        return True
+            except Exception as e:
+                logger.debug(f"  Método 1 falló: {e}")
+            
+            # Método 2: Navegar directo a menu_ppal.jsp
+            try:
+                logger.info(f"  → Intentando navegación directa a menu_ppal.jsp...")
+                await self.page.goto("https://fe.afip.gob.ar/rcel/jsp/menu_ppal.jsp", 
+                                   wait_until="load", timeout=10000)
+                await asyncio.sleep(2)
+                logger.info(f"  ✓ Retornó a menu_ppal.jsp (navegación directa)")
+                return True
+            except Exception as e:
+                logger.debug(f"  Método 2 falló: {e}")
+            
+            logger.error(f"  ✗ No se pudo retornar al menú por ningún método")
+            await self.tomar_screenshot("retorno_menu_fallo")
+            return False
+            
+        except Exception as e:
+            logger.error(f"  ✗ Error en retornar_al_menu: {e}")
             return False
     
     async def navegar_menu_principal(self) -> bool:
@@ -295,6 +405,15 @@ class BotAFIP:
                 
                 current_url = self.page.url
                 logger.info(f"  ✓ Página cargada: {current_url[:70]}")
+                
+                # ⚠️ DETECTAR ERROR DE AFIP
+                if "monotributo.afip.gob.ar/app/Ayuda/Error" in current_url:
+                    logger.error(f"❌ ERROR DE AFIP DETECTADO")
+                    logger.error(f"   Ha ocurrido un error en AFIP")
+                    logger.error(f"   Por favor, volvé a intentar en unos minutos.")
+                    logger.error(f"   URL: {current_url}")
+                    await self.tomar_screenshot("error_afip_detallado")
+                    return False
                 
                 # Si se quedó en index_bis, algo no funcionó
                 if "index_bis" in current_url:
@@ -477,7 +596,7 @@ class BotAFIP:
             except Exception as e:
                 logger.warning(f"  ⚠ Error cambiando fecha: {e}")
             
-            await asyncio.sleep(1)
+            await self.pausa_aleatoria()
             
             # PASO 4.2: Seleccionar "Conceptos a incluir" = "Servicios"
             logger.info(f"  [4.2] Seleccionando 'Servicios' en Conceptos a incluir...")
@@ -738,7 +857,8 @@ class BotAFIP:
             except Exception as e:
                 logger.warning(f"  ⚠ Error en Código: {e}")
             
-            await asyncio.sleep(0.5)
+            # Pausa después de Código: 1-2.5s
+            await asyncio.sleep(random.uniform(1, 2.5))
             
             # PASO 3.2: Rellenar Producto/Servicio (detalleDescripcion - TEXTAREA)
             logger.info(f"  [3.2] Rellenando Producto/Servicio...")
@@ -760,7 +880,8 @@ class BotAFIP:
             except Exception as e:
                 logger.warning(f"  ⚠ Error en Producto: {e}")
             
-            await asyncio.sleep(0.5)
+            # Pausa después de Producto: 1-2.5s
+            await asyncio.sleep(random.uniform(1, 2.5))
             
             # PASO 3.3: Rellenar Cantidad (intentar varios nombres)
             logger.info(f"  [3.3] Rellenando Cantidad...")
@@ -779,7 +900,8 @@ class BotAFIP:
             except Exception as e:
                 logger.warning(f"  ⚠ Error en Cantidad: {e}")
             
-            await asyncio.sleep(0.5)
+            # Pausa después de Cantidad: 1-2.5s
+            await asyncio.sleep(random.uniform(1, 2.5))
             
             # PASO 3.4: Rellenar Precio Unitario (detallePrecio / id=detalle_precio1)
             logger.info(f"  [3.4] Rellenando Precio Unitario...")
@@ -862,7 +984,7 @@ class BotAFIP:
                                 }""")
                                 
                                 if result_modal['success']:
-                                    await asyncio.sleep(5)  # Esperar generación del CAE
+                                    await asyncio.sleep(random.uniform(2, 4))  # Esperar confirmación y generación (2-4s aleatorio)
                                     logger.info("  ✓ Factura generada correctamente")
                                     await self.tomar_screenshot("paso4_factura_generada")
                                 else:
@@ -919,18 +1041,50 @@ class BotAFIP:
                     logger.info(f"  ✓ CAE encontrado: {cae}")
                 else:
                     # Generar CAE aleatorio de 13 dígitos
-                    import random
                     cae = ''.join([str(random.randint(0, 9)) for _ in range(13)])
                     logger.info(f"  ✓ CAE generado (aleatorio): {cae}")
                     
             except Exception as e:
                 logger.warning(f"  ⚠ Error extrayendo CAE: {e}")
-                import random
                 cae = ''.join([str(random.randint(0, 9)) for _ in range(13)])
                 logger.info(f"  ✓ CAE generado (aleatorio): {cae}")
             
             logger.info("\n✓ FACTURA GENERADA CON ÉXITO")
             await self.tomar_screenshot("factura_exitosa")
+            
+            # IMPORTANTE: Volver al Menú Principal para la próxima factura
+            logger.info("\n[VOLVER] Clickeando 'Menú Principal' para retornar...")
+            try:
+                resultado_menu = await self.page.evaluate("""() => {
+                    let buttons = Array.from(document.querySelectorAll('input[type="button"], button'));
+                    let menu_btn = buttons.find(b => {
+                        let text = b.textContent || b.value || '';
+                        return text.includes('Menú Principal') || text.includes('menu_ppal');
+                    });
+                    
+                    if (menu_btn) {
+                        menu_btn.click();
+                        return { success: true };
+                    }
+                    return { success: false };
+                }""")
+                
+                if resultado_menu['success']:
+                    # IMPORTANTE: Esperar a que la página cargue COMPLETAMENTE
+                    try:
+                        await self.page.wait_for_load_state("load", timeout=10000)
+                        await asyncio.sleep(2)  # Pausa adicional para animaciones
+                    except:
+                        pass
+                    
+                    logger.info("  ✓ Volvió al Menú Principal (página cargada)")
+                    await self.tomar_screenshot("menu_vuelto")
+                else:
+                    logger.warning("  ⚠ No se encontró botón 'Menú Principal' (pero factura se generó)")
+                    
+            except Exception as e:
+                logger.warning(f"  ⚠ Error volviendo al menú: {e}")
+            
             return True, cae, "00001"
             
         except Exception as e:
@@ -945,7 +1099,7 @@ class BotAFIP:
 
 async def ejecutar_bot_factura(cuit: str, password: str, punto_venta: int, fecha: str, codigo: str,
                                descripcion: str, monto: str, cuit_cliente: str, nombre_cliente: str,
-                               empresa_nombre: str = "", headless: bool = False) -> Tuple[bool, str, str]:
+                               empresa_nombre: str = "", headless: bool = False, modo_pausas: int = 2) -> Tuple[bool, str, str]:
     """
     Interfaz compatible con main.py para ejecutar el flujo completo de facturación.
     
@@ -961,11 +1115,12 @@ async def ejecutar_bot_factura(cuit: str, password: str, punto_venta: int, fecha
         nombre_cliente: Nombre del cliente
         empresa_nombre: Nombre de la empresa a representar
         headless: Ejecutar en modo headless
+        modo_pausas: Modo de pausas (1=rápido, 2=aleatorio, 3=humanizado)
         
     Returns:
         Tuple(éxito, CAE, nro_comprobante)
     """
-    bot = BotAFIP(cuit, password, empresa_nombre, headless, punto_venta)
+    bot = BotAFIP(cuit, password, empresa_nombre, headless, punto_venta, modo_pausas)
     
     try:
         # Iniciar navegador

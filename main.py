@@ -5,17 +5,19 @@ Orquesta la lectura del Excel, ejecución del bot y actualización de resultados
 Modo de uso:
     - Automático (viernes 9 AM): python main.py
     - Inmediato: python main.py --ahora
+    - Con modo de pausas: python main.py --ahora --modo 1
 """
 
 import asyncio
 import argparse
 import sys
+import random
 from pathlib import Path
 from datetime import datetime
 
 from excel_handler import ExcelHandler, crear_excel_ejemplo
 from csv_handler import CSVHandler
-from bot import ejecutar_bot_factura
+from bot import BotAFIP
 from scheduler import Scheduler
 from utils import LoggerFactory, validar_ambiente, crear_excel_si_no_existe
 from config import (
@@ -27,18 +29,16 @@ from config import (
 logger = LoggerFactory.get_logger(__name__)
 
 
-async def procesar_factura(csv_handler: CSVHandler, fila: dict, cuit: str, 
-                           password: str, punto_venta: int, headless: bool) -> bool:
+async def procesar_factura(bot: BotAFIP, csv_handler: CSVHandler, fila: dict, modo_pausas: int = 2) -> bool:
     """
-    Procesa una factura individual.
+    Procesa una factura individual usando el bot ya inicializado.
+    El navegador se mantiene abierto entre facturas.
     
     Args:
+        bot: Instancia del BotAFIP con sesión activa
         csv_handler: Instancia del manejador de CSV
         fila: Diccionario con datos de la factura
-        cuit: CUIT del usuario AFIP
-        password: Contraseña del usuario AFIP
-        punto_venta: Punto de venta a usar
-        headless: Si ejecutar en modo headless
+        modo_pausas: Modo de pausas (1=rápido, 2=aleatorio, 3=humanizado)
         
     Returns:
         bool: True si se procesó exitosamente
@@ -47,26 +47,25 @@ async def procesar_factura(csv_handler: CSVHandler, fila: dict, cuit: str,
         logger.info(f"Procesando factura: {fila.get('descripcion', 'sin descripción')}")
         
         # Validar datos requeridos
-        campos_requeridos = ['fecha', 'descripcion', 'monto', 'cuit_cliente', 'nombre_cliente']
+        campos_requeridos = ['fecha', 'descripcion', 'monto']
         for campo in campos_requeridos:
             if campo not in fila or not fila[campo]:
                 logger.error(f"Campo requerido faltante o vacío: {campo}")
                 return False
         
-        # Ejecutar bot para generar factura
-        exito, cae, nro_comprobante = await ejecutar_bot_factura(
-            cuit=cuit,
-            password=password,
-            punto_venta=punto_venta,
-            fecha=str(fila['fecha']),
-            codigo=str(fila.get('codigo', '055')),
-            descripcion=str(fila['descripcion']),
-            monto=str(fila['monto']),
-            cuit_cliente=str(fila['cuit_cliente']),
-            nombre_cliente=str(fila['nombre_cliente']),
-            empresa_nombre=AFIP_EMPRESA_NOMBRE,
-            headless=headless
-        )
+        # Preparar datos para la factura
+        datos = {
+            "FECHA": str(fila['fecha']),
+            "CODIGO": str(fila.get('codigo', '055')),
+            "PRODUCTO SERVICIO": str(fila['descripcion']),
+            "PRECIO UNITARIO": str(fila['monto'])
+        }
+        
+        # Generar factura (el navegador ya está en el menú)
+        exito, cae, nro_comprobante = await bot.generar_factura(datos)
+        
+        # IMPORTANTE: Siempre intentar retornar al menú, incluso si falló
+        await bot.retornar_al_menu()
         
         if exito and cae and nro_comprobante:
             # Actualizar CSV con resultados
@@ -82,16 +81,25 @@ async def procesar_factura(csv_handler: CSVHandler, fila: dict, cuit: str,
             
     except Exception as e:
         logger.error(f"Excepción al procesar factura: {e}", exc_info=True)
+        # Intentar retornar al menú incluso en excepción
+        try:
+            await bot.retornar_al_menu()
+        except:
+            pass
         return False
 
 
-async def ejecutar_facturador():
+async def ejecutar_facturador(modo_pausas=2):
     """
     Ejecuta el ciclo principal del facturador.
-    Lee el Excel, procesa facturas pendientes y actualiza resultados.
+    Lee el CSV, realiza login UNA sola vez, genera todas las facturas, y cierra.
+    
+    Args:
+        modo_pausas: 1=sin pausa, 2=aleatorio (30-60s), 3=completo (humanizado)
     """
     logger.info("="*60)
     logger.info("Iniciando Facturador AFIP")
+    logger.info(f"Modo de pausas: {['RÁPIDO','ALEATORIO','HUMANIZADO'][modo_pausas-1]}")
     logger.info("="*60)
     
     # Validar configuración
@@ -120,43 +128,103 @@ async def ejecutar_facturador():
     
     logger.info(f"✓ Se encontraron {len(filas_pendientes)} factura(s) pendiente(s)")
     
-    # Procesar cada factura
-    exitosas = 0
-    fallidas = 0
+    # ========== INICIALIZAR BOT UNA SOLA VEZ ==========
+    bot = BotAFIP(AFIP_CUIT, AFIP_PASSWORD, AFIP_EMPRESA_NOMBRE, HEADLESS, AFIP_PUNTO_VENTA, modo_pausas)
     
-    for idx, fila in enumerate(filas_pendientes, 1):
-        logger.info(f"\n[{idx}/{len(filas_pendientes)}] Procesando factura...")
+    try:
+        # Iniciar navegador
+        if not await bot.iniciar_navegador():
+            logger.error("❌ Error al iniciar navegador")
+            return False
         
-        if await procesar_factura(csv_handler, fila, AFIP_CUIT, AFIP_PASSWORD, AFIP_PUNTO_VENTA, HEADLESS):
-            exitosas += 1
+        # Realizar login
+        if not await bot.login():
+            logger.error("❌ Error durante login")
+            await bot.cerrar()
+            return False
+        
+        # Seleccionar empresa
+        if not await bot.seleccionar_empresa():
+            logger.error("❌ Error seleccionando empresa")
+            await bot.cerrar()
+            return False
+        
+        # Navegar a menú principal
+        if not await bot.navegar_menu_principal():
+            logger.error("❌ Error navegando menú principal")
+            logger.error("━" * 60)
+            logger.error("⚠️  PROBABLE CAUSA: AFIP está temporalmente fuera de servicio")
+            logger.error("📝 Acciones recomendadas:")
+            logger.error("   1. Espera 5-10 minutos e intenta nuevamente")
+            logger.error("   2. Prueba accediendo manualmente a https://auth.afip.gov.ar")
+            logger.error("   3. Si AFIP funciona bien, contacta soporte técnico")
+            logger.error("━" * 60)
+            await bot.cerrar()
+            return False
+        
+        logger.info("✓ SESIÓN INITIALIZED - Listo para procesar facturas")
+        
+        # ========== PROCESAR CADA FACTURA ==========
+        exitosas = 0
+        fallidas = 0
+        
+        for idx, fila in enumerate(filas_pendientes, 1):
+            logger.info(f"\n[{idx}/{len(filas_pendientes)}] Procesando factura...")
+            
+            if await procesar_factura(bot, csv_handler, fila, modo_pausas):
+                exitosas += 1
+            else:
+                fallidas += 1
+            
+            # Pausa entre facturas según modo
+            if idx < len(filas_pendientes):
+                if modo_pausas == 1:
+                    # Modo RÁPIDO: sin pausa
+                    pass
+                elif modo_pausas == 2:
+                    # Modo ALEATORIO: 4-15 segundos
+                    pausa = random.randint(4, 15)
+                    logger.info(f"⏳ Pausa: {pausa} segundos")
+                    await asyncio.sleep(pausa)
+                elif modo_pausas == 3:
+                    # Modo HUMANIZADO: 60-120 segundos
+                    pausa = random.randint(60, 120)
+                    logger.info(f"⏳ Pausa: {pausa} segundos")
+                    await asyncio.sleep(pausa)
+        
+        # Cerrar navegador
+        await bot.cerrar()
+        
+        # Guardar cambios en el MISMO archivo que se cargó
+        logger.info("\nActualizando facturas.csv...")
+        if csv_handler.guardar_csv("facturas.csv"):
+            logger.info("✓ Facturas actualizadas en facturas.csv")
         else:
-            fallidas += 1
+            logger.error("❌ Error al actualizar CSV")
         
-        # Breve pausa entre facturas para evitar sobrecargar
-        if idx < len(filas_pendientes):
-            await asyncio.sleep(2)
-    
-    # Guardar cambios en CSV
-    logger.info("\nGuardando cambios en CSV...")
-    if csv_handler.guardar_csv("facturas_emitidas.csv"):
-        logger.info("✓ CSV guardado correctamente en facturas_emitidas.csv")
-    else:
-        logger.error("❌ Error al guardar CSV")
-    
-    # Resumen
-    logger.info("\n" + "="*60)
-    logger.info(f"RESUMEN: {exitosas} exitosa(s), {fallidas} fallida(s)")
-    logger.info("="*60)
-    
-    return fallidas == 0
+        # Resumen
+        logger.info("\n" + "="*60)
+        logger.info(f"RESUMEN: {exitosas} exitosa(s), {fallidas} fallida(s)")
+        logger.info("="*60)
+        
+        return fallidas == 0
+        
+    except Exception as e:
+        logger.error(f"Error en facturador: {e}", exc_info=True)
+        try:
+            await bot.cerrar()
+        except:
+            pass
+        return False
 
 
 def tarea_facturador_programada():
     """
     Wrapper para ejecutar el facturador como tarea programada.
+    Usa modo 2 (aleatorio) por defecto.
     """
     try:
-        asyncio.run(ejecutar_facturador())
+        asyncio.run(ejecutar_facturador(modo_pausas=2))
     except Exception as e:
         logger.error(f"Error en tarea programada: {e}", exc_info=True)
 
@@ -171,6 +239,13 @@ def main():
         "--ahora",
         action="store_true",
         help="Ejecutar inmediatamente (no esperar al viernes)"
+    )
+    parser.add_argument(
+        "--modo",
+        type=int,
+        choices=[1, 2, 3],
+        default=2,
+        help="Modo de pausas: 1=Rápido, 2=Aleatorio (defecto), 3=Humanizado"
     )
     parser.add_argument(
         "--crear-ejemplo",
@@ -219,7 +294,7 @@ def main():
     if args.ahora:
         logger.info("Modo: Ejecución inmediata")
         try:
-            asyncio.run(ejecutar_facturador())
+            asyncio.run(ejecutar_facturador(args.modo))
         except KeyboardInterrupt:
             logger.info("\nEjecución interrumpida por usuario")
         except Exception as e:
