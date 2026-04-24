@@ -12,10 +12,12 @@ load_dotenv()
 # Rutas
 BASE_DIR = Path(__file__).parent
 LOGS_DIR = BASE_DIR / "logs"
-CSV_FILE = BASE_DIR / "facturas.csv"
+FACTURAS_DIR = BASE_DIR / "Facturas"
+CSV_FILE = FACTURAS_DIR / "facturas.csv"
 
-# Crear directorio de logs
+# Crear directorios
 LOGS_DIR.mkdir(exist_ok=True)
+FACTURAS_DIR.mkdir(exist_ok=True)
 
 # Credenciales AFIP
 AFIP_CUIT = os.getenv("AFIP_CUIT", "").strip()
