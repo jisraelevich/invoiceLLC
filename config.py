@@ -40,10 +40,6 @@ LOG_TO_CONSOLE = True
 AFIP_URL_LOGIN = "https://auth.afip.gov.ar/contribuyente_/login.xhtml"
 AFIP_URL_COMPROBANTES = "https://serviciosweb.afip.gov.ar/vfp/abc"
 
-# Configuración del scheduler
-SCHEDULER_HORA = "09:00"
-SCHEDULER_DIA = "friday"
-
 # Validación de configuración
 def validar_configuracion():
     """Valida que la configuración sea correcta."""

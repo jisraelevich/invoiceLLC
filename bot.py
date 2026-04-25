@@ -16,7 +16,7 @@ from typing import Tuple, Optional
 from playwright.async_api import async_playwright, Page, Browser, BrowserContext
 
 from utils import LoggerFactory
-from config import (HEADLESS, TIMEOUT_GENERAL, TIMEOUT_CORTO, TIMEOUT_LARGO)
+from config import (HEADLESS, TIMEOUT_GENERAL, TIMEOUT_CORTO, TIMEOUT_LARGO, LOGS_DIR)
 
 logger = LoggerFactory.get_logger(__name__)
 
@@ -91,10 +91,10 @@ class BotAFIP:
         """Toma un screenshot."""
         try:
             if self.page:
-                ruta = Path("logs") / f"{nombre}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                ruta = LOGS_DIR / f"{nombre}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
                 ruta.parent.mkdir(exist_ok=True)
                 await self.page.screenshot(path=str(ruta))
-                logger.info(f"  📷 {ruta.name}")
+                logger.info(f"  [SCREENSHOT] {ruta.name}")
         except Exception as e:
             logger.error(f"Error screenshot: {e}")
     
