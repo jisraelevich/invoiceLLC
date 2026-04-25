@@ -47,7 +47,7 @@ async def procesar_factura(bot: BotAFIP, csv_handler: CSVHandler, fila: dict, mo
         campos_requeridos = ['fecha', 'descripcion', 'monto']
         for campo in campos_requeridos:
             if campo not in fila or not fila[campo]:
-                logger.error(f"Campo requerido faltante o vacío: {campo}")
+                logger.error(f"[ERROR] Campo requerido faltante o vacío: {campo}")
                 return False
         
         # Preparar datos para la factura
@@ -102,28 +102,28 @@ async def ejecutar_facturador(modo_pausas=2):
     # Validar configuración
     es_valido, errores = validar_ambiente()
     if not es_valido:
-        logger.error("❌ No se puede continuar - hay errores de configuración")
+        logger.error("[ERROR] No se puede continuar - hay errores de configuración")
         return False
     
-    logger.info(f"✓ Configuración cargada:")
+    logger.info(f"[OK] Configuración cargada:")
     logger.info(f"  - CUIT: {AFIP_CUIT[:4]}...{AFIP_CUIT[-2:]}")
     logger.info(f"  - Punto de Venta: {AFIP_PUNTO_VENTA}")
     logger.info(f"  - Modo Headless: {HEADLESS}")
     
     # Cargar CSV
-    csv_handler = CSVHandler("facturas.csv")
+    csv_handler = CSVHandler(str(CSV_FILE))
     if not csv_handler.cargar_csv():
-        logger.error("❌ Error al cargar el archivo CSV")
+        logger.error("[ERROR] Error al cargar el archivo CSV")
         return False
     
     # Obtener facturas pendientes
     filas_pendientes = csv_handler.obtener_filas_pendientes()
     
     if not filas_pendientes:
-        logger.info("✓ Sin facturas pendientes para procesar")
+        logger.info("[OK] Sin facturas pendientes para procesar")
         return True
     
-    logger.info(f"✓ Se encontraron {len(filas_pendientes)} factura(s) pendiente(s)")
+    logger.info(f"[OK] Se encontraron {len(filas_pendientes)} factura(s) pendiente(s)")
     
     # ========== INICIALIZAR BOT UNA SOLA VEZ ==========
     bot = BotAFIP(AFIP_CUIT, AFIP_PASSWORD, AFIP_EMPRESA_NOMBRE, HEADLESS, AFIP_PUNTO_VENTA, modo_pausas)
@@ -131,35 +131,33 @@ async def ejecutar_facturador(modo_pausas=2):
     try:
         # Iniciar navegador
         if not await bot.iniciar_navegador():
-            logger.error("❌ Error al iniciar navegador")
+            logger.error("[ERROR] Error al iniciar navegador")
             return False
         
         # Realizar login
         if not await bot.login():
-            logger.error("❌ Error durante login")
+            logger.error("[ERROR] Error durante login")
             await bot.cerrar()
             return False
         
         # Seleccionar empresa
         if not await bot.seleccionar_empresa():
-            logger.error("❌ Error seleccionando empresa")
+            logger.error("[ERROR] Error seleccionando empresa")
             await bot.cerrar()
             return False
         
         # Navegar a menú principal
         if not await bot.navegar_menu_principal():
-            logger.error("❌ Error navegando menú principal")
-            logger.error("━" * 60)
-            logger.error("⚠️  PROBABLE CAUSA: AFIP está temporalmente fuera de servicio")
-            logger.error("📝 Acciones recomendadas:")
+            logger.error("[ERROR] Error navegando menú principal")
+            logger.error("[INFO] PROBABLE CAUSA: AFIP está temporalmente fuera de servicio")
+            logger.error("[INFO] Acciones recomendadas:")
             logger.error("   1. Espera 5-10 minutos e intenta nuevamente")
             logger.error("   2. Prueba accediendo manualmente a https://auth.afip.gov.ar")
             logger.error("   3. Si AFIP funciona bien, contacta soporte técnico")
-            logger.error("━" * 60)
             await bot.cerrar()
             return False
         
-        logger.info("✓ SESIÓN INITIALIZED - Listo para procesar facturas")
+        logger.info("[OK] SESIÓN INITIALIZED - Listo para procesar facturas")
         
         # ========== PROCESAR CADA FACTURA ==========
         exitosas = 0
@@ -181,12 +179,12 @@ async def ejecutar_facturador(modo_pausas=2):
                 elif modo_pausas == 2:
                     # Modo ALEATORIO: 4-15 segundos
                     pausa = random.randint(4, 15)
-                    logger.info(f"⏳ Pausa: {pausa} segundos")
+                    logger.info(f"[PAUSA] {pausa} segundos")
                     await asyncio.sleep(pausa)
                 elif modo_pausas == 3:
                     # Modo HUMANIZADO: 60-120 segundos
                     pausa = random.randint(60, 120)
-                    logger.info(f"⏳ Pausa: {pausa} segundos")
+                    logger.info(f"[PAUSA] {pausa} segundos")
                     await asyncio.sleep(pausa)
         
         # Cerrar navegador
@@ -194,10 +192,10 @@ async def ejecutar_facturador(modo_pausas=2):
         
         # Guardar cambios en el MISMO archivo que se cargó
         logger.info("\nActualizando facturas.csv...")
-        if csv_handler.guardar_csv("facturas.csv"):
-            logger.info("✓ Facturas actualizadas en facturas.csv")
+        if csv_handler.guardar_csv(str(CSV_FILE)):
+            logger.info("[OK] Facturas actualizadas en facturas.csv")
         else:
-            logger.error("❌ Error al actualizar CSV")
+            logger.error("[ERROR] Error al actualizar CSV")
         
         # Resumen
         logger.info("\n" + "="*60)
