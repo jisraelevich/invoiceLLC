@@ -259,15 +259,15 @@ class BotAFIP:
                 logger.info("  Intentando ejecución de JavaScript...")
                 try:
                     # Buscar el botón y ejecutar su click directamente con JavaScript
-                    await self.page.evaluate("""() => {
+                    await self.page.evaluate(f"""(empresaNombre) => {{
                         let buttons = Array.from(document.querySelectorAll('button, input[type="button"]'));
-                        let boton = buttons.find(b => b.textContent.includes('ESCALERA') || b.value.includes('ESCALERA'));
-                        if (boton) {
+                        let boton = buttons.find(b => b.textContent.includes(empresaNombre) || b.value.includes(empresaNombre));
+                        if (boton) {{
                             boton.click();
                             return true;
-                        }
+                        }}
                         return false;
-                    }""")
+                    }}""", self.empresa_nombre)
                     logger.info("  ✓ Clickeado con JavaScript")
                 except:
                     # Fallback: usar page.click con force
