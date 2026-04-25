@@ -135,7 +135,7 @@ class CSVHandler:
             bool: True si se guardó exitosamente
         """
         try:
-            logger.info(f"📝 Intentando guardar {len(self.datos)} filas en {archivo_salida}...")
+            logger.info(f"[SAVE] Intentando guardar {len(self.datos)} filas en {archivo_salida}...")
             
             archivo_salida_path = Path(archivo_salida)
             
@@ -162,12 +162,12 @@ class CSVHandler:
                         })
                         filas_escritas += 1
                     except Exception as e:
-                        logger.error(f"  ✗ Error escribiendo fila: {e}")
+                        logger.error(f"  [ERROR] Error escribiendo fila: {e}")
                         continue
             
-            logger.info(f"✓ CSV guardado: {archivo_salida_path} ({filas_escritas} filas)")
+            logger.info(f"[OK] CSV guardado: {archivo_salida_path} ({filas_escritas} filas)")
             return True
             
         except Exception as e:
-            logger.error(f"✗ Error al guardar CSV: {e}", exc_info=True)
+            logger.error(f"[ERROR] Error al guardar CSV: {e}", exc_info=True)
             return False

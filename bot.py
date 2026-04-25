@@ -68,7 +68,7 @@ class BotAFIP:
             self.browser = await playwright.chromium.launch(headless=self.headless)
             self.context = await self.browser.new_context()
             self.page = await self.context.new_page()
-            logger.info("✓ Navegador iniciado")
+            logger.info("[OK] Navegador iniciado")
             return True
         except Exception as e:
             logger.error(f"Error al iniciar navegador: {e}")
@@ -83,7 +83,7 @@ class BotAFIP:
                 await self.context.close()
             if self.browser:
                 await self.browser.close()
-            logger.info("✓ Navegador cerrado")
+            logger.info("[OK] Navegador cerrado")
         except Exception as e:
             logger.warning(f"Error al cerrar: {e}")
     
@@ -115,11 +115,11 @@ class BotAFIP:
                 await self.page.goto(
                     "https://auth.afip.gov.ar/contribuyente_/login.xhtml?action=SYSTEM&system=admin_mono",
                     wait_until="domcontentloaded",
-                    timeout=30000
+                    timeout=TIMEOUT_GENERAL
                 )
-                logger.info(f"  ✓ Página cargada: {self.page.url[:50]}...")
+                logger.info(f"  [OK] Página cargada: {self.page.url[:50]}...")
             except Exception as e:
-                logger.error(f"  ✗ Error navegando: {e}")
+                logger.error(f"  [ERROR] Error navegando: {e}")
                 await self.tomar_screenshot("p1_navegacion_error")
                 return False
             
@@ -129,7 +129,7 @@ class BotAFIP:
             logger.info("\n[PASO 1.1] Ingresando CUIT...")
             try:
                 await self.page.fill("input[id='F1:username']", self.cuit)
-                logger.info(f"  ✓ CUIT ingresado: {self.cuit[:4]}***{self.cuit[-2:]}")
+                logger.info(f"  [OK] CUIT ingresado: {self.cuit[:4]}***{self.cuit[-2:]}")
             except Exception as e:
                 logger.error(f"  ✗ Error: {e}")
                 await self.tomar_screenshot("p1_cuit_error")
@@ -151,12 +151,12 @@ class BotAFIP:
             try:
                 password_input = await self.page.query_selector("input[id='F1:password']")
                 if not password_input:
-                    logger.error("  ✗ Campo password no encontrado")
+                    logger.error("  [ERROR] Campo password no encontrado")
                     await self.tomar_screenshot("p1_password_notfound")
                     return False
                 
                 await password_input.fill(self.password)
-                logger.info("  ✓ Contraseña ingresada")
+                logger.info("  [OK] Contraseña ingresada")
             except Exception as e:
                 logger.error(f"  ✗ Error: {e}")
                 await self.tomar_screenshot("p1_password_error")
@@ -179,7 +179,7 @@ class BotAFIP:
             try:
                 facturacion_link = await self.page.query_selector("a[href*='Facturacion'], a:has-text('Facturación')")
                 if facturacion_link:
-                    logger.info("  ✓ Encontrado 'Facturación'")
+                    logger.info("  [OK] Encontrado 'Facturación'")
                     await facturacion_link.click()
                     await asyncio.sleep(3)
                     logger.info(f"  ✓ Clickeado. URL: {self.page.url[:60]}...")
@@ -202,11 +202,11 @@ class BotAFIP:
                     try:
                         elem = await self.page.query_selector(selector)
                         if elem:
-                            logger.info("  ✓ Encontrado 'EMITIR FACTURA'")
+                            logger.info("  [OK] Encontrado 'EMITIR FACTURA'")
                             await elem.click()
                             await asyncio.sleep(3)
                             encontrado = True
-                            logger.info(f"  ✓ Clickeado. URL: {self.page.url[:60]}...")
+                            logger.info(f"  [OK] Clickeado. URL: {self.page.url[:60]}...")
                             break
                     except:
                         continue
@@ -217,13 +217,13 @@ class BotAFIP:
             except Exception as e:
                 logger.warning(f"  ⚠ Error: {e}")
             
-            logger.info(f"\n✓ LOGIN COMPLETO")
+            logger.info(f"\n[OK] LOGIN COMPLETO")
             logger.info(f"  URL final: {self.page.url}")
             await self.tomar_screenshot("login_completado")
             return True
             
         except Exception as e:
-            logger.error(f"✗ Error durante login: {e}")
+            logger.error(f"[ERROR] Error durante login: {e}")
             await self.tomar_screenshot("login_error")
             return False
     
@@ -232,7 +232,7 @@ class BotAFIP:
         Selecciona la empresa en fe.afip.gob.ar/rcel/jsp/index_bis.jsp
         """
         try:
-            logger.info("\n🏢 SELECCIONAR EMPRESA")
+            logger.info("\n[EMPRESA] SELECCIONAR EMPRESA")
             logger.info("-" * 50)
             
             logger.info("\n[PASO 1] Navegando a index_bis.jsp...")
@@ -240,9 +240,9 @@ class BotAFIP:
                 await self.page.goto(
                     "https://fe.afip.gob.ar/rcel/jsp/index_bis.jsp",
                     wait_until="domcontentloaded",
-                    timeout=30000
+                    timeout=TIMEOUT_GENERAL
                 )
-                logger.info(f"  ✓ Página cargada")
+                logger.info(f"  [OK] Página cargada")
             except Exception as e:
                 logger.error(f"  ✗ Error: {e}")
                 await self.tomar_screenshot("empresa_error")
@@ -273,11 +273,11 @@ class BotAFIP:
                     # Fallback: usar page.click con force
                     logger.info("  Fallback: usando page.click con force...")
                     try:
-                        await self.page.click("text=ESCALERA DIAZ JOEL RODRIGO", force=True, timeout=5000)
-                        logger.info("  ✓ Clickeado con page.click")
+                        await self.page.click(f"text={self.empresa_nombre}", force=True, timeout=5000)
+                        logger.info("  [OK] Clickeado con page.click")
                     except:
                         # Último intento: screenshot y luego error
-                        logger.error("  ✗ No se pudo clickear")
+                        logger.error("  [ERROR] No se pudo clickear")
                         await self.tomar_screenshot("empresa_click_error")
                         return False
                 
