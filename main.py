@@ -1,9 +1,8 @@
 """
 Punto de entrada principal del Facturador AFIP.
-Orquesta la lectura del Excel, ejecución del bot y actualización de resultados.
+Orquesta la lectura del CSV, ejecución del bot y actualización de resultados.
 
 Modo de uso:
-    - Automático (viernes 9 AM): python main.py
     - Inmediato: python main.py --ahora
     - Con modo de pausas: python main.py --ahora --modo 1
 """
@@ -12,7 +11,10 @@ import asyncio
 import argparse
 import sys
 import random
-from pathlib import Path
+import warnings
+
+# Ignorar warnings de ResourceWarning de asyncio al cerrar Chromium en Windows
+warnings.filterwarnings('ignore', category=ResourceWarning)
 
 from csv_handler import CSVHandler
 from bot import BotAFIP
