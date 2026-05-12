@@ -1,0 +1,380 @@
+{
+  "defaultContent": "",
+  "estimated": 5100000,
+  "month": 2,
+  "preview": [],
+  "results": [
+    {
+      "amount": 108000,
+      "billType": "055",
+      "cae": "86095459340747",
+      "date": "02/27/2026",
+      "nro_comprobante": "00001074"
+    },
+    {
+      "amount": 99000,
+      "billType": "055",
+      "cae": "86095459299265",
+      "date": "02/27/2026",
+      "nro_comprobante": "00001073"
+    },
+    {
+      "amount": 106000,
+      "billType": "055",
+      "cae": "86095459261378",
+      "date": "02/27/2026",
+      "nro_comprobante": "00001072"
+    },
+    {
+      "amount": 103000,
+      "billType": "055",
+      "cae": "86095459214428",
+      "date": "02/27/2026",
+      "nro_comprobante": "00001071"
+    },
+    {
+      "amount": 104000,
+      "billType": "055",
+      "cae": "86095459174490",
+      "date": "02/27/2026",
+      "nro_comprobante": "00001070"
+    },
+    {
+      "amount": 88000,
+      "billType": "055",
+      "cae": "86095459136267",
+      "date": "02/27/2026",
+      "nro_comprobante": "00001069"
+    },
+    {
+      "amount": 85000,
+      "billType": "055",
+      "cae": "86095459088306",
+      "date": "02/27/2026",
+      "nro_comprobante": "00001068"
+    },
+    {
+      "amount": 87000,
+      "billType": "055",
+      "cae": "86095459039072",
+      "date": "02/27/2026",
+      "nro_comprobante": "00001067"
+    },
+    {
+      "amount": 91000,
+      "billType": "055",
+      "cae": "86095459012639",
+      "date": "02/27/2026",
+      "nro_comprobante": "00001066"
+    },
+    {
+      "amount": 82000,
+      "billType": "055",
+      "cae": "86095458972118",
+      "date": "02/27/2026",
+      "nro_comprobante": "00001065"
+    },
+    {
+      "amount": 93000,
+      "billType": "055",
+      "cae": "86095458930630",
+      "date": "02/27/2026",
+      "nro_comprobante": "00001064"
+    },
+    {
+      "amount": 89000,
+      "billType": "055",
+      "cae": "86095458892544",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001063"
+    },
+    {
+      "amount": 82000,
+      "billType": "055",
+      "cae": "86095458855707",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001062"
+    },
+    {
+      "amount": 108000,
+      "billType": "055",
+      "cae": "86095458816057",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001061"
+    },
+    {
+      "amount": 106000,
+      "billType": "055",
+      "cae": "86095458780314",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001060"
+    },
+    {
+      "amount": 105000,
+      "billType": "055",
+      "cae": "86095458736687",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001059"
+    },
+    {
+      "amount": 119000,
+      "billType": "055",
+      "cae": "86095458660824",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001058"
+    },
+    {
+      "amount": 124000,
+      "billType": "055",
+      "cae": "86095458626255",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001057"
+    },
+    {
+      "amount": 120000,
+      "billType": "055",
+      "cae": "86095458590481",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001056"
+    },
+    {
+      "amount": 97000,
+      "billType": "055",
+      "cae": "86095458561137",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001055"
+    },
+    {
+      "amount": 93000,
+      "billType": "055",
+      "cae": "86095458526392",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001054"
+    },
+    {
+      "amount": 94000,
+      "billType": "055",
+      "cae": "86095458490722",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001053"
+    },
+    {
+      "amount": 114000,
+      "billType": "055",
+      "cae": "86095458449556",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001052"
+    },
+    {
+      "amount": 107000,
+      "billType": "055",
+      "cae": "86095458398896",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001051"
+    },
+    {
+      "amount": 98000,
+      "billType": "055",
+      "cae": "86095458366829",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001050"
+    },
+    {
+      "amount": 122000,
+      "billType": "055",
+      "cae": "86095458335206",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001049"
+    },
+    {
+      "amount": 86000,
+      "billType": "055",
+      "cae": "86095458301575",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001048"
+    },
+    {
+      "amount": 90000,
+      "billType": "055",
+      "cae": "86095458271914",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001047"
+    },
+    {
+      "amount": 88000,
+      "billType": "055",
+      "cae": "86095458244104",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001046"
+    },
+    {
+      "amount": 96000,
+      "billType": "055",
+      "cae": "86095458208855",
+      "date": "02/20/2026",
+      "nro_comprobante": "00001045"
+    },
+    {
+      "amount": 92000,
+      "billType": "055",
+      "cae": "86063576182285",
+      "date": "02/11/2026",
+      "nro_comprobante": "00001044"
+    },
+    {
+      "amount": 81000,
+      "billType": "055",
+      "cae": "86063576101293",
+      "date": "02/11/2026",
+      "nro_comprobante": "00001043"
+    },
+    {
+      "amount": 89000,
+      "billType": "055",
+      "cae": "86063576028011",
+      "date": "02/11/2026",
+      "nro_comprobante": "00001042"
+    },
+    {
+      "amount": 82000,
+      "billType": "055",
+      "cae": "86063575947911",
+      "date": "02/11/2026",
+      "nro_comprobante": "00001041"
+    },
+    {
+      "amount": 98000,
+      "billType": "055",
+      "cae": "86063575876519",
+      "date": "02/11/2026",
+      "nro_comprobante": "00001040"
+    },
+    {
+      "amount": 101000,
+      "billType": "055",
+      "cae": "86063575771313",
+      "date": "02/11/2026",
+      "nro_comprobante": "00001039"
+    },
+    {
+      "amount": 80000,
+      "billType": "055",
+      "cae": "86063575707944",
+      "date": "02/11/2026",
+      "nro_comprobante": "00001038"
+    },
+    {
+      "amount": 91000,
+      "billType": "055",
+      "cae": "86063575615841",
+      "date": "02/11/2026",
+      "nro_comprobante": "00001037"
+    },
+    {
+      "amount": 76000,
+      "billType": "055",
+      "cae": "86063575525135",
+      "date": "02/11/2026",
+      "nro_comprobante": "00001036"
+    },
+    {
+      "amount": 90000,
+      "billType": "055",
+      "cae": "86063575441334",
+      "date": "02/11/2026",
+      "nro_comprobante": "00001035"
+    },
+    {
+      "amount": 78000,
+      "billType": "055",
+      "cae": "86063575353455",
+      "date": "02/11/2026",
+      "nro_comprobante": "00001034"
+    },
+    {
+      "amount": 106000,
+      "billType": "055",
+      "cae": "86063575248780",
+      "date": "02/11/2026",
+      "nro_comprobante": "00001033"
+    },
+    {
+      "amount": 99000,
+      "billType": "055",
+      "cae": "86063575158150",
+      "date": "02/11/2026",
+      "nro_comprobante": "00001032"
+    },
+    {
+      "amount": 93000,
+      "billType": "055",
+      "cae": "86063575080599",
+      "date": "02/06/2026",
+      "nro_comprobante": "00001031"
+    },
+    {
+      "amount": 99000,
+      "billType": "055",
+      "cae": "86063574995777",
+      "date": "02/06/2026",
+      "nro_comprobante": "00001030"
+    },
+    {
+      "amount": 98000,
+      "billType": "055",
+      "cae": "86063574917000",
+      "date": "02/06/2026",
+      "nro_comprobante": "00001029"
+    },
+    {
+      "amount": 93000,
+      "billType": "055",
+      "cae": "86063574790854",
+      "date": "02/06/2026",
+      "nro_comprobante": "00001028"
+    },
+    {
+      "amount": 78000,
+      "billType": "055",
+      "cae": "86063574696515",
+      "date": "02/06/2026",
+      "nro_comprobante": "00001027"
+    },
+    {
+      "amount": 81000,
+      "billType": "055",
+      "cae": "86063574611074",
+      "date": "02/06/2026",
+      "nro_comprobante": "00001026"
+    },
+    {
+      "amount": 83000,
+      "billType": "055",
+      "cae": "86063574519800",
+      "date": "02/06/2026",
+      "nro_comprobante": "00001025"
+    },
+    {
+      "amount": 92000,
+      "billType": "055",
+      "cae": "86063574429592",
+      "date": "02/06/2026",
+      "nro_comprobante": "00001024"
+    },
+    {
+      "amount": 90000,
+      "billType": "055",
+      "cae": "86063574339831",
+      "date": "02/06/2026",
+      "nro_comprobante": "00001023"
+    },
+    {
+      "amount": 80000,
+      "billType": "055",
+      "cae": "86063574245812",
+      "date": "02/06/2026",
+      "nro_comprobante": "00001022"
+    }
+  ],
+  "year": 2026
+}
